@@ -1,4 +1,6 @@
+"use client";
 import React from 'react';
+import Link from 'next/link'
 
 const Login = () => {
   return (
@@ -42,13 +44,16 @@ const Login = () => {
               </div>
               <a href="#" className="text-sm text-blue-500 hover:underline">Forgot Password?</a>
             </div>
+            
 
+            <Link href="/fonts/TimeSchedule">
             <button
               type="submit"
               className="w-full py-3 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 focus:outline-none"
             >
               Login
             </button>
+            </Link>
           </form>
         </div>
       </div>
