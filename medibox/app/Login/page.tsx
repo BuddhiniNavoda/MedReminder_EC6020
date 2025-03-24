@@ -36,16 +36,7 @@ const Login = () => {
                 required
               />
             </div>
-
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center">
-                <input type="checkbox" id="rememberMe" className="mr-2" />
-                <label htmlFor="rememberMe" className="text-sm text-gray-600">Remember Me</label>
-              </div>
-              <a href="#" className="text-sm text-blue-500 hover:underline">Forgot Password?</a>
-            </div>
-            
-
+          
             <Link href="/TimeSchedule">
             <button
               type="submit"
