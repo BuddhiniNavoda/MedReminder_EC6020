@@ -46,7 +46,7 @@ const Login = () => {
             </div>
             
 
-            <Link href="/fonts/TimeSchedule">
+            <Link href="/TimeSchedule">
             <button
               type="submit"
               className="w-full py-3 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 focus:outline-none"
