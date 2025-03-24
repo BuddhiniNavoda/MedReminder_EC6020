@@ -8,7 +8,7 @@ const SignUp = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Password validation
@@ -18,9 +18,27 @@ const SignUp = () => {
     }
 
     setError(""); // Clear any previous error
-    console.log("User Signed Up:", { email, password });
 
-    // TODO: Send data to backend for sign-up processing
+    try {
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.message || 'Sign-up failed');
+        return;
+      }
+
+      console.log("User Signed Up:", { email, password });
+      // TODO: Handle successful sign-up (e.g., redirect or show success message)
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
   };
 
   return (
