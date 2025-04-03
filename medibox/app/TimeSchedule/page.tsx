@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 interface ScheduleItem {
   id: string;
@@ -18,11 +18,30 @@ const TimeSchedulingPage = () => {
   const [editedDate, setEditedDate] = useState('');
   const [editedTime, setEditedTime] = useState('');
   const [editedBoxType, setEditedBoxType] = useState('');
-  const [errorMessage, setErrorMessage] = useState(''); // State for error message
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    // Fetch initial schedule data
+    const fetchSchedule = async () => {
+      try {
+        const response = await fetch('/api/display'); // Updated to call the new API route
+        if (response.ok) {
+          const data: ScheduleItem[] = await response.json();
+          setSchedule(data);
+        } else {
+          console.error('Failed to fetch schedule data');
+        }
+      } catch (error) {
+        console.error('Error fetching schedule data:', error);
+      }
+    };
+
+    fetchSchedule();
+  }, []);
 
   const handleSave = () => {
     if (!date || !time || !boxType) {
-      setErrorMessage('Please fill in all the details.'); // Set error message
+      setErrorMessage('Please fill in all the details.');
       return;
     }
 
@@ -37,7 +56,7 @@ const TimeSchedulingPage = () => {
     setDate('');
     setTime('');
     setBoxType('');
-    setErrorMessage(''); // Clear error message after successful save
+    setErrorMessage('');
   };
 
   const handleDelete = (id: string) => {
@@ -62,7 +81,7 @@ const TimeSchedulingPage = () => {
     setEditingId(null);
   };
 
-  const boxTypeOptions = ['A', 'B', 'C'];
+  const boxTypeOptions = ['A', 'B'];
 
   const sortedSchedule = useMemo(() => {
     return [...schedule].sort((a, b) => {
