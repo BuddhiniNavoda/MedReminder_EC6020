@@ -8,7 +8,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required.' });
         }
-        console.log('Email:', email, 'Password', password);
+        console.log('Email:', email);
+        console.log( 'Password', password);
         return res.status(200).json({ message: 'Login successful', token: 'mock-token' });
 
     }
