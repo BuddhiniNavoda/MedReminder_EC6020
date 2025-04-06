@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import db from "@/lib/firestore";
+import { collection, query, where, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
 
 const SignUp = () => {
   const [email, setEmail] = useState("");
@@ -20,25 +22,25 @@ const SignUp = () => {
     setError(""); // Clear any previous error
 
     try {
-      const response = await fetch('/api/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      // Check if email already exists
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
 
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.message || 'Sign-up failed');
+      if (!querySnapshot.empty) {
+        setError("Email already exists!");
         return;
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        window.location.href = `/schedule?userEmail=${data.user.email}`;
-      }
-      
+      // Add new user to Firestore
+      const userDocRef = await addDoc(usersRef, { email, password });
+
+      // Create a new collection inside the schedule collection with the user's document ID
+      const scheduleRef = doc(db, "schedule", userDocRef.id);
+      await setDoc(scheduleRef, {});
+
+      // Redirect to schedule page with userId as query parameter
+      window.location.href = `/schedule?userId=${userDocRef.id}`;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('An error occurred. Please try again.');

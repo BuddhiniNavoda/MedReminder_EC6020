@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import db from "@/lib/firestore";
+import { collection, doc, getDocs, addDoc, deleteDoc, updateDoc } from "firebase/firestore";
 
 interface ScheduleItem {
   id: string;
@@ -12,7 +14,7 @@ interface ScheduleItem {
 
 const TimeSchedulingPage = () => {
   const searchParams = useSearchParams();
-  const userEmail = searchParams?.get('userEmail') || ''; 
+  const userId = searchParams?.get('userId') || ''; 
 
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -25,32 +27,29 @@ const TimeSchedulingPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (!userEmail) {
-      console.error('User email is required in the URL parameters.');
+    if (!userId) {
+      console.error('User ID is required in the URL parameters.');
       return;
     }
 
     const fetchSchedule = async () => {
       try {
-        const response = await fetch(`/api/schedule?userEmail=${userEmail}`);
-        if (response.ok) {
-          const data: ScheduleItem[] = await response.json();
-          setSchedule(data.map(item => ({
-            id: item._id, 
-            date: new Date(item.dateTime).toISOString().split('T')[0],
-            time: new Date(item.dateTime).toISOString().split('T')[1].slice(0, 5),
-            boxType: item.boxType,
-          })));
-        } else {
-          console.error('Failed to fetch schedule data');
-        }
+        const scheduleRef = collection(db, "schedule", userId, "items");
+        const querySnapshot = await getDocs(scheduleRef);
+        const data: ScheduleItem[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          date: new Date(doc.data().dateTime).toISOString().split('T')[0],
+          time: new Date(doc.data().dateTime).toISOString().split('T')[1].slice(0, 5),
+          boxType: doc.data().boxType,
+        }));
+        setSchedule(data);
       } catch (error) {
         console.error('Error fetching schedule data:', error);
       }
     };
 
     fetchSchedule();
-  }, [userEmail]);
+  }, [userId]);
 
   const handleSave = async () => {
     if (!date || !time || !boxType) {
@@ -60,33 +59,21 @@ const TimeSchedulingPage = () => {
 
     try {
       const dateTime = new Date(`${date}T${time}`).toISOString();
-      const response = await fetch('/api/schedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const scheduleRef = collection(db, "schedule", userId, "items");
+      const docRef = await addDoc(scheduleRef, { dateTime, boxType });
+      setSchedule([
+        ...schedule,
+        {
+          id: docRef.id,
+          date,
+          time,
+          boxType,
         },
-        body: JSON.stringify({ dateTime, boxType, userEmail }),
-      });
-
-      if (response.ok) {
-        const savedSchedule = await response.json();
-        setSchedule([
-          ...schedule,
-          {
-            id: savedSchedule._id,
-            date,
-            time,
-            boxType,
-          },
-        ]);
-        setDate('');
-        setTime('');
-        setBoxType('');
-        setErrorMessage('');
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Failed to save schedule.');
-      }
+      ]);
+      setDate('');
+      setTime('');
+      setBoxType('');
+      setErrorMessage('');
     } catch (error) {
       console.error('Error saving schedule:', error);
       setErrorMessage('An error occurred while saving the schedule.');
@@ -98,15 +85,9 @@ const TimeSchedulingPage = () => {
     if (!confirmDelete) return;
 
     try {
-      const response = await fetch(`/api/schedule?scheduleId=${id}&userEmail=${userEmail}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setSchedule(schedule.filter((item) => item.id !== id));
-      } else {
-        console.error('Failed to delete schedule item');
-      }
+      const docRef = doc(db, "schedule", userId, "items", id);
+      await deleteDoc(docRef);
+      setSchedule(schedule.filter((item) => item.id !== id));
     } catch (error) {
       console.error('Error deleting schedule item:', error);
     }
@@ -124,43 +105,31 @@ const TimeSchedulingPage = () => {
       setErrorMessage('Please fill in all the details.');
       return;
     }
-  
+
     try {
       const dateTime = new Date(`${editedDate}T${editedTime}`).toISOString();
-      const response = await fetch(`/api/schedule?scheduleId=${editingId}&userEmail=${userEmail}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ dateTime, boxType: editedBoxType }),
-      });
-  
-      if (response.ok) {
-        const updatedSchedule = await response.json();
-        setSchedule(
-          schedule.map((item) =>
-            item.id === editingId
-              ? {
-                  ...item,
-                  date: new Date(updatedSchedule.dateTime).toISOString().split('T')[0],
-                  time: new Date(updatedSchedule.dateTime).toISOString().split('T')[1].slice(0, 5),
-                  boxType: updatedSchedule.boxType,
-                }
-              : item
-          )
-        );
-        setEditingId(null);
-        setErrorMessage('');
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || 'Failed to update schedule.');
-      }
+      const docRef = doc(db, "schedule", userId, "items", editingId!);
+      await updateDoc(docRef, { dateTime, boxType: editedBoxType });
+
+      setSchedule(
+        schedule.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                date: editedDate,
+                time: editedTime,
+                boxType: editedBoxType,
+              }
+            : item
+        )
+      );
+      setEditingId(null);
+      setErrorMessage('');
     } catch (error) {
       console.error('Error updating schedule:', error);
       setErrorMessage('An error occurred while updating the schedule.');
     }
   };
-  
 
   const boxTypeOptions = ['A', 'B'];
 
