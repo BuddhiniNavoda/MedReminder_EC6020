@@ -3,10 +3,9 @@ import connectToDatabase from './dbconfig';
 
 export const saveUser = async (email: string, password: string) => {
     try {
-        connectToDatabase(); // Ensure the database connection is established
+        connectToDatabase();
         const user = new User({ email, password });
         await user.save();
-        console.log('User saved successfully:', user);
         return user;
     } catch (error) {
         console.error('Error saving user:', error);
@@ -22,7 +21,6 @@ export const getUserByEmail = async (email: string) => {
             console.log('User not found');
             return null;
         }
-        console.log('User retrieved successfully:', user);
         return user;
     } catch (error) {
         console.error('Error retrieving user:', error);

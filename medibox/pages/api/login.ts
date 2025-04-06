@@ -16,11 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(401).json({ error: 'Invalid email or password.' });
             }
 
-            console.log('Email:', email);
-            return res.status(200).json({ 
-                message: 'Login successful',  
-                userId: user.id // Return user ID
-            });
+            console.log('User logged in successfully:', user);
+            return res.status(200).json({ user });
         } catch (error) {
             console.error('Error during login:', error);
             return res.status(500).json({ error: 'Internal server error.' });

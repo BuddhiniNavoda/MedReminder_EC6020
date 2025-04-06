@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface ScheduleItem {
   id: string;
@@ -10,6 +11,9 @@ interface ScheduleItem {
 }
 
 const TimeSchedulingPage = () => {
+  const searchParams = useSearchParams();
+  const userEmail = searchParams?.get('userEmail') || ''; 
+
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [boxType, setBoxType] = useState('');
@@ -21,13 +25,22 @@ const TimeSchedulingPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    // Fetch initial schedule data
+    if (!userEmail) {
+      console.error('User email is required in the URL parameters.');
+      return;
+    }
+
     const fetchSchedule = async () => {
       try {
-        const response = await fetch('/api/display'); // Updated to call the new API route
+        const response = await fetch(`/api/schedule?userEmail=${userEmail}`);
         if (response.ok) {
           const data: ScheduleItem[] = await response.json();
-          setSchedule(data);
+          setSchedule(data.map(item => ({
+            id: item._id, 
+            date: new Date(item.dateTime).toISOString().split('T')[0],
+            time: new Date(item.dateTime).toISOString().split('T')[1].slice(0, 5),
+            boxType: item.boxType,
+          })));
         } else {
           console.error('Failed to fetch schedule data');
         }
@@ -37,30 +50,66 @@ const TimeSchedulingPage = () => {
     };
 
     fetchSchedule();
-  }, []);
+  }, [userEmail]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!date || !time || !boxType) {
       setErrorMessage('Please fill in all the details.');
       return;
     }
 
-    const id = Date.now().toString();
-    const newScheduleItem: ScheduleItem = {
-      id,
-      date,
-      time,
-      boxType,
-    };
-    setSchedule([...schedule, newScheduleItem]);
-    setDate('');
-    setTime('');
-    setBoxType('');
-    setErrorMessage('');
+    try {
+      const dateTime = new Date(`${date}T${time}`).toISOString();
+      const response = await fetch('/api/schedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dateTime, boxType, userEmail }),
+      });
+
+      if (response.ok) {
+        const savedSchedule = await response.json();
+        setSchedule([
+          ...schedule,
+          {
+            id: savedSchedule._id,
+            date,
+            time,
+            boxType,
+          },
+        ]);
+        setDate('');
+        setTime('');
+        setBoxType('');
+        setErrorMessage('');
+      } else {
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || 'Failed to save schedule.');
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      setErrorMessage('An error occurred while saving the schedule.');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setSchedule(schedule.filter((item) => item.id !== id));
+  const handleDelete = async (id: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this schedule?");
+    if (!confirmDelete) return;
+
+    try {
+      const response = await fetch(`/api/schedule?scheduleId=${id}&userEmail=${userEmail}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setSchedule(schedule.filter((item) => item.id !== id));
+      } else {
+        console.error('Failed to delete schedule item');
+      }
+    } catch (error) {
+      console.error('Error deleting schedule item:', error);
+    }
   };
 
   const handleEdit = (item: ScheduleItem) => {
@@ -70,16 +119,48 @@ const TimeSchedulingPage = () => {
     setEditedBoxType(item.boxType);
   };
 
-  const handleUpdate = () => {
-    setSchedule(
-      schedule.map((item) =>
-        item.id === editingId
-          ? { ...item, date: editedDate, time: editedTime, boxType: editedBoxType }
-          : item
-      )
-    );
-    setEditingId(null);
+  const handleUpdate = async () => {
+    if (!editedDate || !editedTime || !editedBoxType) {
+      setErrorMessage('Please fill in all the details.');
+      return;
+    }
+  
+    try {
+      const dateTime = new Date(`${editedDate}T${editedTime}`).toISOString();
+      const response = await fetch(`/api/schedule?scheduleId=${editingId}&userEmail=${userEmail}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dateTime, boxType: editedBoxType }),
+      });
+  
+      if (response.ok) {
+        const updatedSchedule = await response.json();
+        setSchedule(
+          schedule.map((item) =>
+            item.id === editingId
+              ? {
+                  ...item,
+                  date: new Date(updatedSchedule.dateTime).toISOString().split('T')[0],
+                  time: new Date(updatedSchedule.dateTime).toISOString().split('T')[1].slice(0, 5),
+                  boxType: updatedSchedule.boxType,
+                }
+              : item
+          )
+        );
+        setEditingId(null);
+        setErrorMessage('');
+      } else {
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || 'Failed to update schedule.');
+      }
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      setErrorMessage('An error occurred while updating the schedule.');
+    }
   };
+  
 
   const boxTypeOptions = ['A', 'B'];
 
@@ -93,13 +174,13 @@ const TimeSchedulingPage = () => {
 
   return (
     <div
-      className="flex min-h-screen text-gray-800"
+      className="flex flex-col md:flex-row min-h-screen text-gray-800"
       style={{
         backgroundColor: '#ADD8E6',
       }}
     >
       {/* Left Side: Scheduling Form */}
-      <div className="w-1/2 flex justify-center items-center">
+      <div className="w-full md:w-1/2 flex justify-center items-center p-4">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
           <h1 className="text-2xl font-bold mb-6 text-center">Time Scheduling</h1>
 
@@ -165,13 +246,13 @@ const TimeSchedulingPage = () => {
       </div>
 
       {/* Right Side: Display Scheduled Items */}
-      <div className="w-1/2 flex justify-center items-center">
+      <div className="w-full md:w-1/2 flex justify-center items-center p-4">
         {sortedSchedule.length > 0 ? (
-          <div className="w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Scheduled Items</h2>
+          <div className="w-full max-w-md h-screen overflow-y-auto p-4 bg-white rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4 text-center">Scheduled Items</h2>
             <ul>
               {sortedSchedule.map((item) => (
-                <li key={item.id} className="mb-2 p-4 border border-gray-300 rounded-md bg-white">
+                <li key={item.id} className="mb-1 p-3 border border-gray-300 rounded-md bg-white">
                   {editingId === item.id ? (
                     <>
                       {/* Edit Mode */}

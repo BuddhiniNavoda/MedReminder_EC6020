@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from 'react';
-import Link from 'next/link';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -18,8 +17,8 @@ const Login = () => {
       });
 
       if (response.ok) {
-        // Redirect to TimeSchedule page on successful login
-        window.location.href = '/TimeSchedule';
+        const data = await response.json();
+        window.location.href = `/schedule?userEmail=${data.user.email}`;
       } else {
         // Handle login error
         console.error('Login failed');

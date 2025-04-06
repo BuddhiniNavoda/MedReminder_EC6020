@@ -34,8 +34,12 @@ const SignUp = () => {
         return;
       }
 
-      console.log("User Signed Up:", { email, password });
-      // TODO: Handle successful sign-up (e.g., redirect or show success message)
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = `/schedule?userEmail=${data.user.email}`;
+      }
+      
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setError('An error occurred. Please try again.');
     }

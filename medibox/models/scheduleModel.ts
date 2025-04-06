@@ -1,25 +1,20 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-// Define the Schedule interface
 export interface ISchedule extends Document {
-  date: Date;
-  time: string;
-  selectBoxType: string;
-  userEmail: string; // Email of the logged-in user
+  dateTime: Date; 
+  boxType: string;
+  userEmail: string; 
 }
 
-// Define the Schedule schema
+
 const ScheduleSchema: Schema = new Schema(
   {
-    date: {
+    dateTime: { 
       type: Date,
       required: true,
     },
-    time: {
-      type: String,
-      required: true,
-    },
-    selectBoxType: {
+
+    boxType: {
       type: String,
       required: true,
     },
@@ -30,10 +25,9 @@ const ScheduleSchema: Schema = new Schema(
     
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 
-// Export the Schedule model
 const Schedule = mongoose.models.Schedule || mongoose.model<ISchedule>('Schedule', ScheduleSchema);
 export default Schedule;
