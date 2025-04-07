@@ -306,7 +306,7 @@ const TimeSchedulingPageContent = ({ userId }: { userId: string }) => {
   );
 };
 
-const TimeSchedulingPage = () => {
+const TimeSchedulingPageWrapper = () => {
   const searchParams = useSearchParams();
   const userId = searchParams?.get('userId') || '';
 
@@ -314,9 +314,13 @@ const TimeSchedulingPage = () => {
     return <div>User ID is required in the URL parameters.</div>;
   }
 
+  return <TimeSchedulingPageContent userId={userId} />;
+};
+
+const TimeSchedulingPage = () => {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <TimeSchedulingPageContent userId={userId} />
+      <TimeSchedulingPageWrapper />
     </Suspense>
   );
 };
