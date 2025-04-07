@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
-import db from "@/lib/firestore";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import rdb from "@/lib/database";
+import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -12,19 +12,27 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      // Query the users collection to find the user
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email), where("password", "==", password));
-      const querySnapshot = await getDocs(q);
+      // Query the users node to find the user
+      const usersRef = ref(rdb, "users");
+      const q = query(usersRef, orderByChild("email"), equalTo(email));
+      const snapshot = await get(q);
 
-      if (querySnapshot.empty) {
+      if (!snapshot.exists()) {
         setError("Invalid email or password.");
         return;
       }
 
-      // Get the userId from the query result
-      const userDoc = querySnapshot.docs[0];
-      const userId = userDoc.id;
+      let userId = null;
+      snapshot.forEach((childSnapshot) => {
+        if (childSnapshot.val().password === password) {
+          userId = childSnapshot.key;
+        }
+      });
+
+      if (!userId) {
+        setError("Invalid email or password.");
+        return;
+      }
 
       // Redirect to schedule page with userId as query parameter
       window.location.href = `/schedule?userId=${userId}`;

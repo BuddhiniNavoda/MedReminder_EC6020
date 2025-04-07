@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import db from "@/lib/firestore";
-import { collection, query, where, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
+import rdb from "@/lib/database";
+import { ref, push, set, query, orderByChild, equalTo, get } from "firebase/database";
 
 const SignUp = () => {
   const [email, setEmail] = useState("");
@@ -13,36 +13,36 @@ const SignUp = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Password validation
     if (password !== confirmPassword) {
       setError("Passwords do not match!");
       return;
     }
 
-    setError(""); // Clear any previous error
+    setError("");
 
     try {
-      // Check if email already exists
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
+      const usersRef = ref(rdb, "users");
+      const q = query(usersRef, orderByChild("email"), equalTo(email));
+      const snapshot = await get(q);
 
-      if (!querySnapshot.empty) {
+      if (snapshot.exists()) {
         setError("Email already exists!");
         return;
       }
 
-      // Add new user to Firestore
-      const userDocRef = await addDoc(usersRef, { email, password });
+      // Add new user to Realtime Database
+      const newUserRef = push(usersRef);
+      await set(newUserRef, { email, password });
 
-      // Create a new collection inside the schedule collection with the user's document ID
-      const scheduleRef = doc(db, "schedule", userDocRef.id);
-      await setDoc(scheduleRef, {});
+      // Create an empty schedule for the user
+      const scheduleRef = ref(rdb, `schedule/${newUserRef.key}`);
+      await set(scheduleRef, {});
 
       // Redirect to schedule page with userId as query parameter
-      window.location.href = `/schedule?userId=${userDocRef.id}`;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      window.location.href = `/schedule?userId=${newUserRef.key}`;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
+      console.error("Error fetching users from DB:", err);
       setError('An error occurred. Please try again.');
     }
   };

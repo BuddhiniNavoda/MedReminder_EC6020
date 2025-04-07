@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import db from "@/lib/firestore";
-import { collection, doc, getDocs, addDoc, deleteDoc, updateDoc } from "firebase/firestore";
+import rdb from "@/lib/database";
+import { ref, get, push, remove, update, set } from "firebase/database";
 
 interface ScheduleItem {
   id: string;
@@ -34,15 +34,21 @@ const TimeSchedulingPage = () => {
 
     const fetchSchedule = async () => {
       try {
-        const scheduleRef = collection(db, "schedule", userId, "items");
-        const querySnapshot = await getDocs(scheduleRef);
-        const data: ScheduleItem[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          date: new Date(doc.data().dateTime).toISOString().split('T')[0],
-          time: new Date(doc.data().dateTime).toISOString().split('T')[1].slice(0, 5),
-          boxType: doc.data().boxType,
-        }));
-        setSchedule(data);
+        const scheduleRef = ref(rdb, `schedule/${userId}`);
+        const snapshot = await get(scheduleRef);
+
+        if (snapshot.exists()) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const data: ScheduleItem[] = Object.entries(snapshot.val()).map(([key, value]: any) => ({
+            id: key,
+            date: new Date(value.dateTime).toISOString().split('T')[0],
+            time: new Date(value.dateTime).toISOString().split('T')[1].slice(0, 5),
+            boxType: value.boxType,
+          }));
+          setSchedule(data);
+        } else {
+          setSchedule([]); // Ensure schedule is cleared if no data exists
+        }
       } catch (error) {
         console.error('Error fetching schedule data:', error);
       }
@@ -59,12 +65,14 @@ const TimeSchedulingPage = () => {
 
     try {
       const dateTime = new Date(`${date}T${time}`).toISOString();
-      const scheduleRef = collection(db, "schedule", userId, "items");
-      const docRef = await addDoc(scheduleRef, { dateTime, boxType });
+      const scheduleRef = ref(rdb, `schedule/${userId}`);
+      const newItemRef = push(scheduleRef);
+      await set(newItemRef, { dateTime, boxType });
+
       setSchedule([
         ...schedule,
         {
-          id: docRef.id,
+          id: newItemRef.key!,
           date,
           time,
           boxType,
@@ -85,8 +93,8 @@ const TimeSchedulingPage = () => {
     if (!confirmDelete) return;
 
     try {
-      const docRef = doc(db, "schedule", userId, "items", id);
-      await deleteDoc(docRef);
+      const itemRef = ref(rdb, `schedule/${userId}/${id}`);
+      await remove(itemRef);
       setSchedule(schedule.filter((item) => item.id !== id));
     } catch (error) {
       console.error('Error deleting schedule item:', error);
@@ -108,8 +116,8 @@ const TimeSchedulingPage = () => {
 
     try {
       const dateTime = new Date(`${editedDate}T${editedTime}`).toISOString();
-      const docRef = doc(db, "schedule", userId, "items", editingId!);
-      await updateDoc(docRef, { dateTime, boxType: editedBoxType });
+      const itemRef = ref(rdb, `schedule/${userId}/${editingId}`);
+      await update(itemRef, { dateTime, boxType: editedBoxType });
 
       setSchedule(
         schedule.map((item) =>
