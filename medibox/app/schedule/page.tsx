@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import rdb from "@/lib/database";
 import { ref, get, push, remove, update, set } from "firebase/database";
@@ -12,10 +12,7 @@ interface ScheduleItem {
   boxType: string;
 }
 
-const TimeSchedulingPage = () => {
-  const searchParams = useSearchParams();
-  const userId = searchParams?.get('userId') || ''; 
-
+const TimeSchedulingPageContent = ({ userId }: { userId: string }) => {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [boxType, setBoxType] = useState('');
@@ -27,11 +24,6 @@ const TimeSchedulingPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (!userId) {
-      console.error('User ID is required in the URL parameters.');
-      return;
-    }
-
     const fetchSchedule = async () => {
       try {
         const scheduleRef = ref(rdb, `schedule/${userId}`);
@@ -311,6 +303,21 @@ const TimeSchedulingPage = () => {
         )}
       </div>
     </div>
+  );
+};
+
+const TimeSchedulingPage = () => {
+  const searchParams = useSearchParams();
+  const userId = searchParams?.get('userId') || '';
+
+  if (!userId) {
+    return <div>User ID is required in the URL parameters.</div>;
+  }
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TimeSchedulingPageContent userId={userId} />
+    </Suspense>
   );
 };
 
